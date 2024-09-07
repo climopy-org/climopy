@@ -1613,11 +1613,11 @@ class ClimoAccessor(object):
 
         return indexers_filtered, indexers
 
-    def _parse_truncate_args(self, **kwargs):
+    def _parse_truncate_args(self, strict=False, **kwargs):
         """
-        Parse arguments used to truncate data. Returns tuple of dictionaries used
-        to limit data range. Used by both `~ClimoAccessor.truncate` and
-        `~ClimoDataArrayAccessor.reduce`.
+        Parse arguments used to truncate data. Returns tuple of dictionaries used to
+        limit data range. If `strict` is ``True`` then `lim` suffix is required. Used
+        by both `~ClimoAccessor.truncate` and `~ClimoDataArrayAccessor.reduce`.
         """
         # Limit range of dimension reduction
         # NOTE: This permits *multiple* bounds that get reduced to 'track' dimension,
@@ -1634,11 +1634,11 @@ class ClimoAccessor(object):
             # things much easier if we can just detect special suffix without trying
             # to figure out if the rest of the string matches a dimension yet.
             m = re.match(r'\A(.*?)_(min|max|lim)\Z', key)
-            if not m:
+            if strict and not m:
                 continue
             if key not in kwargs:  # happens with e.g. latitude_min=x latitude_max=y
                 continue
-            dim, mode = m.groups()
+            dim, mode = m.groups() if m else (key, 'lim')
             try:
                 dim = self.cf._decode_name(dim, 'axes', 'coordinates')
             except KeyError:
@@ -3354,7 +3354,7 @@ class ClimoDataArrayAccessor(ClimoAccessor):
         # Parse truncate args
         # NOTE: _parse_truncate ensures all bounds passed are put into DataArrays with
         # a 'startstop' dim, an at least singleton 'track' dim, and matching shapes.
-        kw_trunc, kwargs = source.climo._parse_truncate_args(**kwargs)
+        kw_trunc, kwargs = source.climo._parse_truncate_args(strict=True, **kwargs)
         if kw_trunc:  # translate truncation selection array
             sample = tuple(kw_trunc.values())[0]
             dims_sample = sample.dims[1:]  # exclude 'startstop'
